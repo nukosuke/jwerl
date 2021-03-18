@@ -44,7 +44,7 @@ sign(Data, Algorithm) ->
 % @end
 -spec sign(Data :: map() | list(), Algorithm :: algorithm(), KeyOrPem :: binary()) -> binary().
 sign(Data, Algorithm, KeyOrPem) when (is_map(Data) orelse is_list(Data)), is_atom(Algorithm), is_binary(KeyOrPem) ->
-    encode(jsx:encode(Data), config_headers(#{alg => algorithm_to_binary(Algorithm)}), KeyOrPem).
+    encode(jsone:encode(Data), config_headers(#{alg => algorithm_to_binary(Algorithm)}), KeyOrPem).
 
 % @equiv verify(Data, <<"">>, hs256, #{}, #{})
 verify(Data) ->
@@ -229,11 +229,11 @@ config_headers(Options) ->
 
 decode_header(Data) ->
   [Header|_] = binary:split(Data, <<".">>, [global]),
-  jsx:decode(base64_decode(Header), [return_maps, {labels, attempt_atom}]).
+  jsone:decode(base64_decode(Header), [{object_format, map}, {keys, attempt_atom}]).
 
 payload(Data, none, _) ->
   [_, Data1|_] = binary:split(Data, <<".">>, [global]),
-  {ok, jsx:decode(base64_decode(Data1), [return_maps, {labels, attempt_atom}])};
+  {ok, jsone:decode(base64_decode(Data1), [{object_format, map}, {keys, attempt_atom}])};
 payload(Data, Algorithm, Key) ->
   [Header, Data1, Signature] = binary:split(Data, <<".">>, [global]),
   {AlgMod, ShaBits} = algorithm_to_infos(Algorithm),
@@ -242,13 +242,13 @@ payload(Data, Algorithm, Key) ->
                                      <<Header/binary, ".", Data1/binary>>,
                                      base64_decode(Signature)]) of
     true ->
-      {ok, jsx:decode(base64_decode(Data1), [return_maps, {labels, attempt_atom}])};
+      {ok, jsone:decode(base64_decode(Data1), [{object_format, map}, {keys, attempt_atom}])};
     _ ->
       {error, invalid_signature}
   end.
 
 encode_input(Data, Options) ->
-  <<(base64_encode(jsx:encode(Options)))/binary, ".", (base64_encode(Data))/binary>>.
+  <<(base64_encode(jsone:encode(Options)))/binary, ".", (base64_encode(Data))/binary>>.
 
 signature(Algorithm, Key, Data) ->
   {AlgMod, ShaBits} = algorithm_to_infos(Algorithm),
